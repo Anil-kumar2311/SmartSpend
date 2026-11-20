@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import app from '../src/app.js';
 import { authPasswordSchema } from '../src/routes/auth.js';
 import { Budget } from '../src/models/Budget.js';
@@ -38,6 +40,26 @@ test('protected routes, health checks, and API errors have safe responses', asyn
   });
   assert.equal(disallowedOrigin.status, 403);
   assert.deepEqual(await disallowedOrigin.json(), { error: 'Origin is not allowed.' });
+});
+
+test('built frontend routes are served without swallowing unknown API routes', async (context) => {
+  const server = app.listen(0);
+  context.after(() => new Promise((resolve) => server.close(resolve)));
+  await new Promise((resolve) => server.once('listening', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const frontendBuilt = existsSync(fileURLToPath(new URL('../../dist/index.html', import.meta.url)));
+
+  const root = await fetch(origin);
+  assert.equal(root.status, frontendBuilt ? 200 : 404);
+  if (frontendBuilt) {
+    assert.match(root.headers.get('content-type'), /text\/html/);
+    const clientRoute = await fetch(`${origin}/transactions`);
+    assert.equal(clientRoute.status, 200);
+    assert.match(clientRoute.headers.get('content-type'), /text\/html/);
+  }
+
+  const unknownApi = await fetch(`${origin}/api/not-a-route`);
+  assert.equal(unknownApi.status, 404);
 });
 
 test('password limits match bcrypt input capacity', () => {

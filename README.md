@@ -42,6 +42,7 @@ The API derives analytics from the requesting user's database records only. AI-g
 ## Production deployment
 
 - Build the frontend with `npm run build` and serve `dist/` from a static host. If the API is on a different origin, set `VITE_API_BASE_URL` to its base URL when building; keep the frontend and API same-site so the `SameSite=Lax` session cookie is sent.
+- For a single Node service, configure the deployment build command to run `npm ci && npm run build` and the start command as `npm start` from the repository root. The Express server serves the generated `dist/` app, including client-side routes, while keeping `/api` requests on the API. Building the frontend is required; without `dist/index.html`, the service runs as an API only.
 - Configure the API's `MONGODB_URI`, `JWT_SECRET`, `WEB_ORIGIN`, and `NODE_ENV=production`, then start it with `npm run api:start`. The API refuses to start without MongoDB and a valid production frontend origin.
 - Route `/api` to the API service and serve the frontend application fallback for client routes. Terminate TLS at the hosting platform or reverse proxy.
 - `/api/health` is a readiness check and returns HTTP 503 when MongoDB is disconnected. API responses are marked `Cache-Control: no-store`.

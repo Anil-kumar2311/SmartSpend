@@ -1,4 +1,7 @@
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -65,6 +68,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/transactions', requireAuth, transactionRoutes);
 app.use('/api/budgets', requireAuth, budgetRoutes);
 app.use('/api/ai', requireAuth, intelligenceRoutes);
+
+const frontendBuildPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../dist');
+const frontendIndexPath = resolve(frontendBuildPath, 'index.html');
+if (existsSync(frontendIndexPath)) {
+  app.use(express.static(frontendBuildPath));
+  app.get('*', (request, response, next) => {
+    if (request.path === '/api' || request.path.startsWith('/api/')) return next();
+    return response.sendFile(frontendIndexPath);
+  });
+}
 
 app.use((error, request, response, next) => {
   if (response.headersSent) return next(error);
